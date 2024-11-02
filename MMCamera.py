@@ -11,14 +11,12 @@ class MMCamera:
         posToTarget = cameraPos.vectorTo(cameraTarget)
 
         self.forwardEyeToTargetLength = posToTarget.length
-        # self.forwardEyeToTargetLength = 1 # Always one, since target is always 
 
         posToTarget.normalize()
 
         # Where is the virtual target relative to the camera.eye
         self.virtualTargetForward = posToTarget
         self.virtualEye = cameraPos.asVector()
-
 
         futil.log('MMCamera created')    
     
@@ -29,6 +27,7 @@ class MMCamera:
 
         absoluteTarget = self.virtualEye.copy()
         absoluteTarget.add(multipliedDirection)
+
         return absoluteTarget
 
     def calc_virtual_cam_right(self):
@@ -65,4 +64,5 @@ class MMCamera:
         translationVector.scaleBy(-y)
         self.virtualEye.add(translationVector)
 
-        
+    def rotate_by(self, xAxisRad: float, yAxisRad: float, zAxisRad: float):
+      pass

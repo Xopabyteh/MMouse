@@ -158,7 +158,7 @@ def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewp
     
     panSpeed = 10 * deltaTime
     zoomSpeed = 100 * deltaTime
-
+    rotationSpeed = 0.01 * deltaTime
     # Get camera copy
     cameraCopy = viewport.camera
     cameraCopy.isSmoothTransition = False
@@ -174,6 +174,11 @@ def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewp
     )
     mmCamera.zoom_by(
         joystickAxis[2] * zoomSpeed
+    )
+    mmCamera.rotate_by(
+        joystickAxis[3] * rotationSpeed,
+        joystickAxis[4] * rotationSpeed,
+        joystickAxis[5] * rotationSpeed
     )
     mmCamera.apply_to_camera(cameraCopy)    
     
