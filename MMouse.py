@@ -29,7 +29,7 @@ def run(context):
         # Screen
         pygame.display.init()
         pygame.font.init()
-        pyScreen = pygame.display.set_mode((640, 480))
+        pyScreen = pygame.display.set_mode((800, 480))
         font = pygame.font.Font(None, 36)
 
         # Create a thread to run the joystick loop
@@ -127,6 +127,12 @@ def display_mm_camera(mmCamera: MMCamera, start_x: int, start_y: int):
     text = f'VT Absolute: {absoluteTarget.x:.2f}, {absoluteTarget.y:.2f}, {absoluteTarget.z:.2f}'
     pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 142 + start_y))
 
+    # Show up vector
+    up = mmCamera.upVector
+    text = f'Up: {up.x:.2f}, {up.y:.2f}, {up.z:.2f}'
+    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 178 + start_y))
+
+
 def dispaly_camera(camera: adsk.core.Camera, start_x: int, start_y: int):
     # Show header
     pyScreen.blit(font.render('Camera', True, (255, 255, 255)), (start_x, start_y))
@@ -151,6 +157,11 @@ def dispaly_camera(camera: adsk.core.Camera, start_x: int, start_y: int):
         text = f'Extents: {extents[0]}, {extents[1]:.2f}, {extents[2]:.2f}'
         pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 108 + start_y))
 
+    # Show up vector
+    up = camera.upVector
+    text = f'Up: {up.x:.2f}, {up.y:.2f}, {up.z:.2f}'
+    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 144 + start_y))
+
 def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewport, mmCamera : MMCamera, deltaTime: float):
     # If all axis are zero, return
     if (joystickAxis[0] + joystickAxis[1] + joystickAxis[2] + joystickAxis[3] + joystickAxis[4] + joystickAxis[5]) == 0:
@@ -158,7 +169,7 @@ def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewp
     
     panSpeed = 10 * deltaTime
     zoomSpeed = 100 * deltaTime
-    rotationSpeed = 0.01 * deltaTime
+    rotationSpeed = 1 * deltaTime
     # Get camera copy
     cameraCopy = viewport.camera
     cameraCopy.isSmoothTransition = False
@@ -176,9 +187,9 @@ def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewp
         joystickAxis[2] * zoomSpeed
     )
     mmCamera.rotate_by(
-        joystickAxis[3] * rotationSpeed,
-        joystickAxis[4] * rotationSpeed,
-        joystickAxis[5] * rotationSpeed
+        -joystickAxis[3] * rotationSpeed, # Joystick rX
+        joystickAxis[5] * rotationSpeed, # Joystick rZ note: [4] and [5] are swapped
+        joystickAxis[4] * rotationSpeed # Joystick rY
     )
     mmCamera.apply_to_camera(cameraCopy)    
     
