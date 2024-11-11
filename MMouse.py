@@ -2,12 +2,12 @@
 from . import commands
 from .lib import fusionAddInUtils as futil
 from .MMCamera import *
+from .MMDebugWindow import *
 import adsk.core, adsk.fusion, adsk.cam, traceback
 import pygame
 import threading
 
-pyScreen : pygame.Surface | None = None
-font: pygame.font.Font | None = None
+
 running = False
 stopping = False
 
@@ -26,12 +26,6 @@ def run(context):
         joystick = pygame.joystick.Joystick(0)
         joystick.init()
 
-        # Screen
-        pygame.display.init()
-        pygame.font.init()
-        pyScreen = pygame.display.set_mode((800, 480))
-        font = pygame.font.Font(None, 36)
-
         # Create a thread to run the joystick loop
         thread = threading.Thread(target=joystick_loop_wrapper, args=(joystick,))
         thread.start()
@@ -43,11 +37,11 @@ def run(context):
 
 def joystick_loop_wrapper(joystick: pygame.joystick.JoystickType):
     try:
-        joystick_loop(joystick)
+        joystick_loop(joystick, debugWindow=None)
     except:
         futil.handle_error('joystick_loop_wrapper')
 
-def joystick_loop(joystick: pygame.joystick.JoystickType):
+def joystick_loop(joystick: pygame.joystick.JoystickType, debugWindow : MMDebugWindow = None):
     # This function runs in a separate thread
     global running
     futil.log('Joystick loop start, running:' + str(running))
@@ -69,14 +63,10 @@ def joystick_loop(joystick: pygame.joystick.JoystickType):
 
         # Read joystick axis
         joystickAxis = read_joystick_axis(joystick)
-        
-        # Show axis on the screen
-        pyScreen.fill((0, 0, 0))
-        display_joystick_axis(joystickAxis, 0, 0)
-        display_mm_camera(mmCamera, 300, 0)
-        dispaly_camera(viewport.camera, 0, 300)
-        
-        pygame.display.flip()
+
+        # Show debug window (if available) 
+        if debugWindow:
+            debugWindow.show_debug(joystickAxis, mmCamera, viewport)
 
         # Get delta time
         currentTime = pygame.time.get_ticks()
@@ -92,75 +82,6 @@ def joystick_loop(joystick: pygame.joystick.JoystickType):
     # -> Broke out of loop
     # stop(None)
 
-axis_labels = ['x', 'y', 'z', 'rx', 'ry', 'rz']
-def display_joystick_axis(joystickAxis: list[float], start_x: int, start_y: int):
-    # Show header
-    pyScreen.blit(font.render('Joystick axis', True, (255, 255, 255)), (start_x, start_y))
-
-    # Show axis
-    for index, label in enumerate(axis_labels):
-        value = joystickAxis[index]
-        text = f'{label}: {value:.2f}'
-        pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, index * 36 + 40 + start_y))
-
-def display_mm_camera(mmCamera: MMCamera, start_x: int, start_y: int):
-    # Show header
-    pyScreen.blit(font.render('MMCamera', True, (255, 255, 255)), (start_x, start_y))
-
-    # Show camera eye
-    eye = mmCamera.virtualEye
-    text = f'V Eye: {eye.x:.2f}, {eye.y:.2f}, {eye.z:.2f}'
-    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 36 + start_y))
-
-    # Show virtual target direction
-    vtOffset = mmCamera.virtualTargetForward
-    text = f'VT forward: {vtOffset.x:.2f}, {vtOffset.y:.2f}, {vtOffset.z:.2f}'
-    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 72 + start_y))
-
-    # Show virtual camera forward length
-    virtualCamForward = mmCamera.forwardEyeToTargetLength
-    text = f'VT fw length: {virtualCamForward:.2f}'
-    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 108 + start_y))
-
-    # Show absolute virtual target
-    absoluteTarget = mmCamera.calc_absolute_target()
-    text = f'VT Absolute: {absoluteTarget.x:.2f}, {absoluteTarget.y:.2f}, {absoluteTarget.z:.2f}'
-    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 142 + start_y))
-
-    # Show up vector
-    up = mmCamera.upVector
-    text = f'Up: {up.x:.2f}, {up.y:.2f}, {up.z:.2f}'
-    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 178 + start_y))
-
-
-def dispaly_camera(camera: adsk.core.Camera, start_x: int, start_y: int):
-    # Show header
-    pyScreen.blit(font.render('Camera', True, (255, 255, 255)), (start_x, start_y))
-
-    # Show eye
-    eye = camera.eye
-    text = f'Eye: {eye.x:.2f}, {eye.y:.2f}, {eye.z:.2f}'
-    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 36 + start_y))
-
-    # Show target
-    target = camera.target
-    text = f'Target: {target.x:.2f}, {target.y:.2f}, {target.z:.2f}'
-    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 72 + start_y))
-
-    # Show extents (tuple bool float float)
-    # or perspective angle (depending on camera type)
-    if camera.cameraType == adsk.core.CameraTypes.PerspectiveCameraType:
-        text = f'Perspective angle: {camera.perspectiveAngle:.2f}'
-        pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 108 + start_y))
-    else:
-        extents = camera.getExtents()
-        text = f'Extents: {extents[0]}, {extents[1]:.2f}, {extents[2]:.2f}'
-        pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 108 + start_y))
-
-    # Show up vector
-    up = camera.upVector
-    text = f'Up: {up.x:.2f}, {up.y:.2f}, {up.z:.2f}'
-    pyScreen.blit(font.render(text, True, (255, 255, 255)), (start_x, 144 + start_y))
 
 def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewport, mmCamera : MMCamera, deltaTime: float):
     # If all axis are zero, return
