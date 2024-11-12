@@ -6,18 +6,13 @@ app = adsk.core.Application.get()
 ui = app.userInterface
 
 
-# TODO *** Specify the command identity information. ***
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'
-CMD_NAME = 'Command Dialog Sample'
-CMD_Description = 'A Fusion Add-in Command with a dialog'
+CMD_NAME = 'MMouse settings'
+CMD_Description = 'Configure settings for MaMoth Mouse'
 
 # Specify that the command will be promoted to the panel.
 IS_PROMOTED = True
 
-# TODO *** Define the location where the command button will be created. ***
-# This is done by specifying the workspace, the tab, and the panel, and the 
-# command it will be inserted beside. Not providing the command to position it
-# will insert it at the end.
 WORKSPACE_ID = 'FusionSolidEnvironment'
 PANEL_ID = 'SolidScriptsAddinsPanel'
 COMMAND_BESIDE_ID = 'ScriptsManagerCommand'
@@ -75,20 +70,18 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     # General logging for debug.
     futil.log(f'{CMD_NAME} Command Created Event')
 
-    # https://help.autodesk.com/view/fusion360/ENU/?contextId=CommandInputs
     inputs = args.command.commandInputs
 
-    # TODO Define the dialog for your command by adding different inputs to the command.
+    # # Create a simple text box input.
+    # inputs.addTextBoxCommandInput('text_box', 'Some Text', 'Enter some text.', 1, False)
 
-    # Create a simple text box input.
-    inputs.addTextBoxCommandInput('text_box', 'Some Text', 'Enter some text.', 1, False)
+    # # Create a value input field and set the default using 1 unit of the default length unit.
+    # defaultLengthUnits = app.activeProduct.unitsManager.defaultLengthUnits
+    # default_value = adsk.core.ValueInput.createByString('1')
+    # inputs.addValueInput('value_input', 'Some Value', defaultLengthUnits, default_value)
 
-    # Create a value input field and set the default using 1 unit of the default length unit.
-    defaultLengthUnits = app.activeProduct.unitsManager.defaultLengthUnits
-    default_value = adsk.core.ValueInput.createByString('1')
-    inputs.addValueInput('value_input', 'Some Value', defaultLengthUnits, default_value)
 
-    # TODO Connect to the events that are needed by this command.
+
     futil.add_handler(args.command.execute, command_execute, local_handlers=local_handlers)
     futil.add_handler(args.command.inputChanged, command_input_changed, local_handlers=local_handlers)
     futil.add_handler(args.command.executePreview, command_preview, local_handlers=local_handlers)

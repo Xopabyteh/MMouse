@@ -3,6 +3,8 @@ from . import commands
 from .lib import fusionAddInUtils as futil
 from .MMCamera import *
 from .MMDebugWindow import *
+from .MMInputService import *
+from .MMSettings import *
 import adsk.core, adsk.fusion, adsk.cam, traceback
 import pygame
 import threading
@@ -12,7 +14,7 @@ running = False
 stopping = False
 
 def run(context):
-    global pyScreen, font, running
+    global running
     running = True
 
     try:
@@ -23,11 +25,8 @@ def run(context):
         pygame.init()
         pygame.joystick.init()
 
-        joystick = pygame.joystick.Joystick(0)
-        joystick.init()
-
         # Create a thread to run the joystick loop
-        thread = threading.Thread(target=joystick_loop_wrapper, args=(joystick,))
+        thread = threading.Thread(target=mmouse_loop_wrapper,)
         thread.start()
 
         futil.log('MMouse running')            
@@ -35,13 +34,22 @@ def run(context):
     except:
         futil.handle_error('run')
 
-def joystick_loop_wrapper(joystick: pygame.joystick.JoystickType):
+# Ran on a separate thread
+def mmouse_loop_wrapper():
     try:
-        joystick_loop(joystick, debugWindow=None)
+        joystick = pygame.joystick.Joystick(0)
+        joystick.init()
+        inputService = MMInputService(joystick)
+
+        settings = MMSettings()
+
+        debugWindow = None
+
+        mmouse_loop(inputService, settings, debugWindow)
     except:
         futil.handle_error('joystick_loop_wrapper')
 
-def joystick_loop(joystick: pygame.joystick.JoystickType, debugWindow : MMDebugWindow = None):
+def mmouse_loop(inputService : MMInputService, mmSettings : MMSettings, debugWindow : MMDebugWindow = None):
     # This function runs in a separate thread
     global running
     futil.log('Joystick loop start, running:' + str(running))
@@ -61,20 +69,23 @@ def joystick_loop(joystick: pygame.joystick.JoystickType, debugWindow : MMDebugW
         # Keep the event queue clear
         pygame.event.pump()
 
-        # Read joystick axis
-        joystickAxis = read_joystick_axis(joystick)
-
-        # Show debug window (if available) 
-        if debugWindow:
-            debugWindow.show_debug(joystickAxis, mmCamera, viewport)
-
         # Get delta time
         currentTime = pygame.time.get_ticks()
         deltaTime = (currentTime - lastTime) / 1000 # In seconds
         lastTime = currentTime
 
+        # Ensure settings are loaded
+        mmSettings.ensure_settings()
+
+        # Read joystick axis
+        joystickAxis = inputService.read_joystick_axis()
+
+        # Show debug window (if available) 
+        if debugWindow:
+            debugWindow.show_debug(joystickAxis, mmCamera, viewport)
+
         # Handle camera movement
-        handle_camera_movement(joystickAxis, viewport, mmCamera, deltaTime)
+        handle_camera_movement(joystickAxis, viewport, mmCamera, mmSettings, deltaTime)
 
         # Sleep for a bit to avoid hogging the CPU
         pygame.time.wait(10)
@@ -83,14 +94,19 @@ def joystick_loop(joystick: pygame.joystick.JoystickType, debugWindow : MMDebugW
     # stop(None)
 
 
-def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewport, mmCamera : MMCamera, deltaTime: float):
+def handle_camera_movement(
+        joystickAxis: list[float],
+        viewport : adsk.core.Viewport,
+        mmCamera : MMCamera,
+        mmSettings : MMSettings,
+        deltaTime: float):
     # If all axis are zero, return
     if (joystickAxis[0] + joystickAxis[1] + joystickAxis[2] + joystickAxis[3] + joystickAxis[4] + joystickAxis[5]) == 0:
         return
     
-    panSpeed = 10 * deltaTime
-    zoomSpeed = 100 * deltaTime
-    rotationSpeed = 1 * deltaTime
+    panSpeed = mmSettings.camera_speeds['pan'] * deltaTime
+    zoomSpeed = mmSettings.camera_speeds['zoom'] * deltaTime
+    rotationSpeed = mmSettings.camera_speeds['rotation'] * deltaTime
     # Get camera copy
     cameraCopy = viewport.camera
     cameraCopy.isSmoothTransition = False
@@ -109,8 +125,8 @@ def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewp
     )
     mmCamera.rotate_by(
         -joystickAxis[3] * rotationSpeed, # Joystick rX
-        joystickAxis[5] * rotationSpeed, # Joystick rZ note: [4] and [5] are swapped
-        joystickAxis[4] * rotationSpeed # Joystick rY
+        joystickAxis[4] * rotationSpeed, # Joystick rY
+        joystickAxis[5] * rotationSpeed # Joystick rZ
     )
     mmCamera.apply_to_camera(cameraCopy)    
     
@@ -119,45 +135,7 @@ def handle_camera_movement(joystickAxis: list[float], viewport : adsk.core.Viewp
     viewport.refresh()
     return
 
-# Reads 6 MMouse joystick axis and returns a normalized
-# list of floats between -1 and 1
-def read_joystick_axis(joystick: pygame.joystick.JoystickType):
-    # 0-Based index MMouse joystick axis:
-    # 0: X 1: X
-    # 2: Y 3: Y
-    # 4: Z 5: RX
-    # 6: RY 7: RZ
 
-    x = joystick.get_axis(0)
-    y = joystick.get_axis(2)
-    z = joystick.get_axis(4)
-    rx = joystick.get_axis(5)
-    ry = joystick.get_axis(6)
-    rz = joystick.get_axis(7)
-
-    # Apply deadzones
-    deadzonedAxis = map(apply_deadzone_and_remap, [x, y, z, rx, ry, rz])
-
-    return list(deadzonedAxis)
-
-
-def apply_deadzone_and_remap(value, deadzone=0.36):
-    # Ensure the input is within the expected range
-    if value < -1 or value > 1:
-        raise ValueError("Input must be between -1 and 1")
-
-    # Apply the deadzone
-    if -deadzone <= value <= deadzone:
-        return 0  # Value within the deadzone
-
-    # Map values outside the deadzone
-    if value > deadzone:
-        # Map from [deadzone, 1] to [0, 1]
-        return (value - deadzone) / (1 - deadzone)
-    else:
-        # Map from [-deadzone, -1] to [0, -1]
-        return (value + deadzone) / (1 - deadzone)
-    
 def stop(context):
     global stopping, running
     if stopping: # Ensure idepotency

@@ -8,9 +8,9 @@ import pygame
 class MMDebugWindow:
     def __init__(self):
         pygame.display.init()
-        pygame.self.font.init()
+        pygame.font.init()
         self.pyScreen = pygame.display.set_mode((800, 480))
-        self.font = pygame.self.font.self.font(None, 36)
+        self.font = pygame.font.SysFont(None, 36)
     
     def show_debug(self, joystickAxis, mmCamera, viewport):
         self.pyScreen.fill((0, 0, 0))
