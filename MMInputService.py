@@ -2,7 +2,7 @@ from . import commands
 from .lib import fusionAddInUtils as futil
 from .MMCamera import *
 from .MMDebugWindow import *
-from .MMSettings import MMSettings
+from .MMSettingsTransient import MMSettingsTransient
 import adsk.core, adsk.fusion, adsk.cam
 import pygame
 
@@ -10,7 +10,7 @@ class MMInputService:
 
     def __init__(self, joystick: pygame.joystick.JoystickType):
         self.joystick = joystick
-        self.settings = MMSettings()
+        self.settings = MMSettingsTransient()
 
     # Reads 6 MMouse joystick axis and returns a normalized
     # list of floats between -1 and 1
@@ -24,7 +24,7 @@ class MMInputService:
         #  7: RZ
 
 
-        axisIds = [self.settings.get_joystick_axisId(axisName) for axisName in MMSettings.axisNames]
+        axisIds = [self.settings.get_joystick_axisId(axisName) for axisName in MMSettingsTransient.axisNames]
 
         # Read axis values
         axisValues = [self.joystick.get_axis(axisId) for axisId in axisIds]
@@ -34,7 +34,7 @@ class MMInputService:
             lambda axisValue,
             axisName: MMInputService.normalize_axis(axisValue, axisName, self.settings),
             axisValues,
-            MMSettings.axisNames
+            MMSettingsTransient.axisNames
         )
 
         return list(normalizedAxis)
@@ -59,7 +59,7 @@ class MMInputService:
         return value
 
     @staticmethod
-    def normalize_axis(value, axisName, settings : MMSettings):
+    def normalize_axis(value, axisName, settings : MMSettingsTransient):
         # Apply deadzone
         deadzone = settings.get_deadzone(axisName)
         upperLimit = settings.get_upper_limit(axisName)

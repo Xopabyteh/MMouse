@@ -17,7 +17,7 @@ import configparser
 # Stores the camera zoom speed
 # Stores the camera rotation speed
 # Displays settings in fusion UI
-class MMSettings:
+class MMSettingsTransient:
     addin_path = os.path.dirname(os.path.abspath(__file__))
     settings_path = os.path.join(addin_path, 'mm_runtime_settings.ini')
 
@@ -27,7 +27,7 @@ class MMSettings:
     # Singleton pattern implementation
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(MMSettings, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super(MMSettingsTransient, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self):
@@ -73,8 +73,9 @@ class MMSettings:
         }
         config['CameraSpeeds'] = {
             'pan': '10',
-            'zoom': '100',
+            'zoom': '10',
             'rotation': '1',
+            'zoom_dependend_dampening': '0.5',
             'x': 1,
             'y': 1,
             'z': 1,

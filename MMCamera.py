@@ -5,23 +5,27 @@ import adsk.core, adsk.fusion, adsk.cam
 class MMCamera:
     def __init__(self, viewport: adsk.core.Viewport):
         self.viewport = viewport
-        self.upVector = adsk.core.Vector3D.create(0, 0, 1)
-
-        # Create a virtual target infront of the camear
-        cameraPos = viewport.camera.eye
-        cameraTarget = viewport.camera.target
-        posToTarget = cameraPos.vectorTo(cameraTarget)
-
-        self.forwardEyeToTargetLength = posToTarget.length
-
-        posToTarget.normalize()
-
-        # Where is the virtual target relative to the camera.eye
-        self.virtualTargetForward = posToTarget
-        self.virtualEye = cameraPos.asVector()
+        self.load_from_camera(viewport.camera)
 
         futil.log('MMCamera created')    
     
+    def load_from_camera(self, otherCamera: adsk.core.Camera):
+        self.upVector = otherCamera.upVector
+
+        # Create a virtual target infront of the camear
+        otherCameraPos = otherCamera.eye
+        otherCameraTarget = otherCamera.target
+        posToTarget = otherCameraPos.vectorTo(otherCameraTarget)
+
+        self.forwardEyeToTargetLength = posToTarget.length
+
+        # Where is the virtual target relative to the camera.eye
+        toTargetNormalized = posToTarget.copy()
+        toTargetNormalized.normalize()
+        self.virtualTargetForward = toTargetNormalized
+        self.virtualEye = otherCameraPos.asVector()
+
+
     def calc_absolute_target(self):
         # Eye + virtualTargetDirection * forwardEyeToTargetLength
         multipliedDirection = self.virtualTargetForward.copy()
@@ -35,6 +39,9 @@ class MMCamera:
     def calc_virtual_cam_right(self):
         return self.virtualTargetForward.crossProduct(self.upVector)
 
+    def get_virtual_zoom(self):
+        return self.forwardEyeToTargetLength
+    
     # Sets the other cameras eye to this cameras eye
     # Sets the other cameras target to this cameras target (camera.eye + virtualTargetOffset)
     def apply_to_camera(self, otherCamera: adsk.core.Camera):

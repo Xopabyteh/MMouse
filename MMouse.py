@@ -4,7 +4,7 @@ from .lib import fusionAddInUtils as futil
 from .MMCamera import *
 from .MMDebugWindow import *
 from .MMInputService import *
-from .MMSettings import *
+from .MMSettingsTransient import *
 import adsk.core, adsk.fusion, adsk.cam, traceback
 import pygame
 import threading
@@ -41,15 +41,16 @@ def mmouse_loop_wrapper():
         joystick.init()
         inputService = MMInputService(joystick)
 
-        settings = MMSettings()
+        settings = MMSettingsTransient()
 
         debugWindow = None
+        # debugWindow = MMDebugWindow()
 
         mmouse_loop(inputService, settings, debugWindow)
     except:
         futil.handle_error('joystick_loop_wrapper')
 
-def mmouse_loop(inputService : MMInputService, mmSettings : MMSettings, debugWindow : MMDebugWindow = None):
+def mmouse_loop(inputService : MMInputService, mmSettings : MMSettingsTransient, debugWindow : MMDebugWindow = None):
     # This function runs in a separate thread
     global running
     futil.log('Joystick loop start, running:' + str(running))
@@ -98,15 +99,26 @@ def handle_camera_movement(
         joystickAxis: list[float],
         viewport : adsk.core.Viewport,
         mmCamera : MMCamera,
-        mmSettings : MMSettings,
+        mmSettings : MMSettingsTransient,
         deltaTime: float):
     # If all axis are zero, return
     if (joystickAxis[0] + joystickAxis[1] + joystickAxis[2] + joystickAxis[3] + joystickAxis[4] + joystickAxis[5]) == 0:
         return
-    
+
+    # Load camera from viewport (if the user has changed the camera without MMouse)
+    mmCamera.load_from_camera(viewport.camera)
+
     panSpeed = mmSettings.camera_speeds['pan'] * deltaTime
     zoomSpeed = mmSettings.camera_speeds['zoom'] * deltaTime
     rotationSpeed = mmSettings.camera_speeds['rotation'] * deltaTime
+
+    # Slows down the camera movement based on how zoomed in we are
+    zoomDependendDampening = mmSettings.camera_speeds['zoom_dependend_dampening']
+    zoom = mmCamera.get_virtual_zoom()
+    panSpeed = zoom_dampen(panSpeed, zoom, zoomDependendDampening)
+    zoomSpeed = zoom_dampen(zoomSpeed, zoom, zoomDependendDampening)
+    rotationSpeed = zoom_dampen(rotationSpeed, zoom, zoomDependendDampening)
+
     # Get camera copy
     cameraCopy = viewport.camera
     cameraCopy.isSmoothTransition = False
@@ -134,6 +146,20 @@ def handle_camera_movement(
     viewport.camera = cameraCopy
     viewport.refresh()
     return
+
+def zoom_dampen(moveSpeed: float, cameraDistance: float, zoomDependendDampening: float):
+    # Dampening is value from 0 to 1 (0 = no dampening, 1 = full dampening)
+
+    # Remap cameraDistance from 0-50 to 0-1 & clamp
+    cameraDistance = cameraDistance / 50
+    cameraDistance = max(0, min(1, cameraDistance))
+    zoom = 1 - cameraDistance # 1 = zoomed in, 0 = zoomed out
+
+    # Calculate dampening (the less camera distance, the less moveSpeed)
+    dampening = zoomDependendDampening * zoom
+    moveSpeed = moveSpeed * (1 - dampening)
+    
+    return moveSpeed
 
 
 def stop(context):
